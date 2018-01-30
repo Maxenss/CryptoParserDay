@@ -27,10 +27,10 @@ public class Coin {
     public void setValue(double newValue) {
         if (this.value == -1) {
             div = 0;
-            this.value = newValue;
         } else {
             div = ((newValue - this.value) / this.value) * 100;
         }
+        this.value = newValue;
     }
 
     public double getDiv() {

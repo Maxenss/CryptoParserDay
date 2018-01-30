@@ -7,110 +7,144 @@
     android:orientation="vertical"
     tools:context="com.easylabs.cryptoparserday.MainActivity">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:layout_margin="5dp"
-        android:background="#f1f1f1"
-        android:orientation="vertical">
+        android:layout_height="match_parent"
+        android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/tvName1"
+        <LinearLayout
+            android:id="@+id/llCoins"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000" />
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvValue1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000"
-            android:textSize="20sp" />
+            <LinearLayout
+                android:id="@+id/llCoin1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="5dp"
+                android:background="#f1f1f1"
+                android:clickable="true"
+                android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvDiv1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000" />
+                <TextView
+                    android:id="@+id/tvName1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000" />
 
-    </LinearLayout>
+                <TextView
+                    android:id="@+id/tvValue1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000"
+                    android:textSize="20sp" />
 
-    <LinearLayout
+                <TextView
+                    android:id="@+id/tvDiv1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/llCoin3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="5dp"
+                android:background="#f1f1f1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvName3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000" />
+
+                <TextView
+                    android:id="@+id/tvValue3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000"
+                    android:textSize="20sp" />
+
+                <TextView
+                    android:id="@+id/tvDiv3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/llCoin2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="5dp"
+                android:background="#f1f1f1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvName2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000" />
+
+                <TextView
+                    android:id="@+id/tvValue2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000"
+                    android:textSize="20sp" />
+
+                <TextView
+                    android:id="@+id/tvDiv2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="TextView"
+                    android:textColor="#000000" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <EditText
+        android:id="@+id/etNewCoin"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:layout_margin="5dp"
-        android:background="#f1f1f1"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:gravity="center_vertical|center"
+        android:hint="Enter some coin name..."
+        android:inputType="textPersonName"
+        android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/tvName2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000" />
-
-        <TextView
-            android:id="@+id/tvValue2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/tvDiv2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000" />
-    </LinearLayout>
-
-    <LinearLayout
+    <Button
+        android:id="@+id/btAddCoin"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:layout_margin="5dp"
-        android:background="#f1f1f1"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:text="Add Coin" />
 
-        <TextView
-            android:id="@+id/tvName3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000" />
-
-        <TextView
-            android:id="@+id/tvValue3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/tvDiv3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="TextView"
-            android:textColor="#000000" />
-
-    </LinearLayout>
 </LinearLayout>
