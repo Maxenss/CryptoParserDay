@@ -1,7 +1,5 @@
 package com.easylabs.cryptoparserday;
 
-import android.graphics.Color;
-import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -12,110 +10,120 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONObject;
+import java.util.ArrayList;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     // Раз в 1 мин. получать значения цены криптовалют:
     // BTC, XPR, ETH
     // Данные будем брать с API. Данные получаем в json, и парсим.
 
-    // ДЗ: добавить ещё 7 криптовалют
-
-    Coin[] coins = new Coin[3];
-    TextView[] tvNames = new TextView[3];
-    TextView[] tvValues = new TextView[3];
-    TextView[] tvDivs = new TextView[3];
-    LinearLayout[] llCoins = new LinearLayout[3];
-
-    TextView tvName1;
-    TextView tvName2;
-    TextView tvName3;
-
-    TextView tvValue1;
-    TextView tvValue2;
-    TextView tvValue3;
-
-    TextView tvDiv1;
-    TextView tvDiv2;
-    TextView tvDiv3;
-
-    LinearLayout llCoin1;
-    LinearLayout llCoin2;
-    LinearLayout llCoin3;
-
+    // Контейнер со всеми LinearLayout монет
     LinearLayout LLCoins;
+
+    // Способ хранения монет:
+    // 1. БД.
+    // 2. SharedPref и JSON.
+    // BTC, BCC
+    // {coins:[{name:"BTC"}, {name: "BCC"}]}
 
     // Кнопка, отвечающая за добавления новой монеты
     Button btAddCoin;
     // Поле для ввода названия монеты для добавления
     EditText etNewCoin;
 
+    boolean isFirstLaunch = true;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Инициализация View-компонентов
-        tvName1 = (TextView) findViewById(R.id.tvName1);
-        tvName2 = (TextView) findViewById(R.id.tvName2);
-        tvName3 = (TextView) findViewById(R.id.tvName3);
-
-        tvValue1 = (TextView) findViewById(R.id.tvValue1);
-        tvValue2 = (TextView) findViewById(R.id.tvValue2);
-        tvValue3 = (TextView) findViewById(R.id.tvValue3);
-
-        tvDiv1 = (TextView) findViewById(R.id.tvDiv1);
-        tvDiv2 = (TextView) findViewById(R.id.tvDiv2);
-        tvDiv3 = (TextView) findViewById(R.id.tvDiv3);
-
-        llCoin1 = (LinearLayout) findViewById(R.id.llCoin1);
-        llCoin2 = (LinearLayout) findViewById(R.id.llCoin2);
-        llCoin3 = (LinearLayout) findViewById(R.id.llCoin3);
-        // Привязываем обработчики на нажатие
-        llCoin1.setOnClickListener(onCoinClickListener);
-        llCoin2.setOnClickListener(onCoinClickListener);
-        llCoin3.setOnClickListener(onCoinClickListener);
-
         LLCoins = (LinearLayout) findViewById(R.id.llCoins);
 
         btAddCoin = (Button) findViewById(R.id.btAddCoin);
-        btAddCoin.setOnClickListener(onButtonAddCoinClickListener);
+        btAddCoin.setOnClickListener(this);
         etNewCoin = (EditText) findViewById(R.id.etNewCoin);
 
-        coins[0] = new Coin("BTC");
-        coins[1] = new Coin("XRP");
-        coins[2] = new Coin("ETH");
+        //  // Создаём асинхронный поток
+        //  RequestGetCoinsCost requestGetCoinsCost =
+        //          new RequestGetCoinsCost();
+        //  // Запускаем его
+        //  requestGetCoinsCost.execute();
 
-        tvNames[0] = tvName1;
-        tvNames[1] = tvName2;
-        tvNames[2] = tvName3;
+        Data.setActivity(this);
+        if (isFirstLaunch) {
+            Data.addCoin(new Coin("BTC"));
+            Data.addCoin(new Coin("ETH"));
+            Data.addCoin(new Coin("XRP"));
+        } else {
+            Data.readData();
+        }
 
-        tvValues[0] = tvValue1;
-        tvValues[1] = tvValue2;
-        tvValues[2] = tvValue3;
-
-        tvDivs[0] = tvDiv1;
-        tvDivs[1] = tvDiv2;
-        tvDivs[2] = tvDiv3;
-
-        llCoins[0] = llCoin1;
-        llCoins[1] = llCoin2;
-        llCoins[2] = llCoin3;
-
-        // Создаём асинхронный поток
-        RequestGetCoinsCost requestGetCoinsCost =
-                new RequestGetCoinsCost();
-        // Запускаем его
-        requestGetCoinsCost.execute();
-
-        createCoinLL();
+        createCoinsLL();
     }
 
+    // Из макета создаём контейнер с инфой о монете
+    private void createCoinLL(Coin coin) {
+        LinearLayout linearLayout =
+                (LinearLayout) LayoutInflater.from(this).
+                        inflate(R.layout.coinll, null);
+
+        // Отображаем названи
+        ((TextView) (linearLayout.getChildAt(0))).setText(coin.getName());
+        ((TextView) (linearLayout.getChildAt(1))).
+                setText(String.valueOf(coin.getValue()));
+        ((TextView) (linearLayout.getChildAt(2))).
+                setText(String.valueOf(coin.getDiv()));
+
+        // Объект с инф. о параметрах вставки компонента
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+
+        layoutParams.setMargins(10, 10, 10, 10);
+
+        LLCoins.addView(linearLayout, layoutParams);
+    }
+
+    // Создаём несколько контейнеров
+    private void createCoinsLL() {
+        for (Coin coin :
+                Data.getCoinsArrayList()) {
+            createCoinLL(coin);
+        }
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.btAddCoin:
+                btAddCoinClick();
+                break;
+        }
+    }
+
+    public void btAddCoinClick() {
+        if (etNewCoin.getVisibility() == View.GONE) {
+            etNewCoin.setVisibility(View.VISIBLE);
+        } else {
+            String etNewCoinText = etNewCoin.getText().toString();
+
+            if (etNewCoinText.isEmpty()) {
+                Toast.makeText(MainActivity.this,
+                        "Enter some coin name",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Coin coin = new Coin(etNewCoinText);
+            if (Data.addCoin(coin)) {
+                createCoinLL(coin);
+            } else {
+                Toast.makeText(this, "Эта монета уже есть :)", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+    /*
     // Отображаем инф. о монетах на экран
     private void showCoins() {
         for (int i = 0; i < coins.length; i++) {
@@ -140,12 +148,6 @@ public class MainActivity extends AppCompatActivity {
                 tvDivs[i].setText("+" + divString + "%");
             }
         }
-    }
-
-    private void createCoinLL() {
-        LinearLayout linearLayout =
-                (LinearLayout) LayoutInflater.from(this).inflate(R.layout.coinll, null);
-        LLCoins.addView(linearLayout);
     }
 
     // Метод для получения информации о текущем курсе криптовалют на сервисе https://coinmarketcap.com/
@@ -391,22 +393,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             };
+            */
 
-
-    void method() {
-        // добавляем на кнопку обработчик на нажатие
-        button.setOnClickListener(onButtonDivClickListener);
+    private void testMethod() {
+        Customer customer = new Customer();
+        customer.setName("Alex").
+                setLastName("Black").
+                setEmail("customer@gmail.com");
     }
-
-    // Кнопка к которой будем добавлять обработчик на нажатие
-    Button button = new Button(this);
-
-    // Обработчик на нажатие
-    View.OnClickListener onButtonDivClickListener =
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    // Прописываем логику при нажатии на кнопку
-                }
-            };
 }
