@@ -97,6 +97,14 @@ public class Data {
         return true;
     }
 
+    // Метод для удаления монеты, вызывает writeData
+    public static boolean removeCoin(int index) {
+        coinsArrayList.remove(index);
+        writeData();
+
+        return true;
+    }
+
     // Метод для очистки данных
     public static boolean clearData() {
         coinsArrayList.clear();

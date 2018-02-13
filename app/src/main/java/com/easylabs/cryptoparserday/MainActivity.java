@@ -1,24 +1,46 @@
 package com.easylabs.cryptoparserday;
 
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    // Раз в 1 мин. получать значения цены криптовалют:
-    // BTC, XPR, ETH
-    // Данные будем брать с API. Данные получаем в json, и парсим.
+public class MainActivity
+        extends AppCompatActivity
+        implements View.OnClickListener {
+    // TODO: проверку, перед добавлением монеты, есть ли она в реальности
+    // TODO: сделать code review
+    // TODO: интегрировать рекламу
 
     // Контейнер со всеми LinearLayout монет
     LinearLayout LLCoins;
+
+    private static final String TAG = "MainActivity";
+
+    private AdView mAdView;
 
     // Способ хранения монет:
     // 1. БД.
@@ -33,16 +55,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     boolean isFirstLaunch = true;
 
+    ArrayList<LinearLayout>llCoinsList = new ArrayList<>();
+
+    // Индекс монеты на которую мы нажали
+    int coinIndex;
+
+    private  SharedPreferences sPref;
+
+    private String FIRST_LAUNCH = "FIRST_LAUNCH";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mAdView = (AdView) findViewById(R.id.adView);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mAdView.loadAd(adRequest);
 
         LLCoins = (LinearLayout) findViewById(R.id.llCoins);
 
         btAddCoin = (Button) findViewById(R.id.btAddCoin);
         btAddCoin.setOnClickListener(this);
         etNewCoin = (EditText) findViewById(R.id.etNewCoin);
+
+        // Проверяем первый запуск, или не первый
+        // Иниц. объект для работы с SharedPref
+        sPref = getPreferences(MODE_PRIVATE);
+
+        isFirstLaunch = sPref.getBoolean(FIRST_LAUNCH, true);
 
         //  // Создаём асинхронный поток
         //  RequestGetCoinsCost requestGetCoinsCost =
@@ -52,27 +92,74 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         Data.setActivity(this);
         if (isFirstLaunch) {
+            System.out.println("Первый запуск");
             Data.addCoin(new Coin("BTC"));
             Data.addCoin(new Coin("ETH"));
             Data.addCoin(new Coin("XRP"));
+
+            sPref = getPreferences(MODE_PRIVATE);
+            // Подгот. изменения
+            SharedPreferences.Editor ed = sPref.edit();
+            // Помещаем данные в файл
+            ed.putBoolean(FIRST_LAUNCH, false);
+
+            ed.commit();
         } else {
+            System.out.println("Не первый запуск");
             Data.readData();
         }
 
         createCoinsLL();
+
+        RequestCoinsPrice requestCoinsPrice =
+                new RequestCoinsPrice();
+        requestCoinsPrice.execute();
+    }
+
+    // Метод вызываемый при долгом нажатии на View компонент,
+    // который был зарег. для контекстного меню
+    @Override
+    public void onCreateContextMenu(ContextMenu menu,
+                                    View v,
+                                    ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+
+        llCoin = (LinearLayout) v;
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.context_menu, menu);
+    }
+
+    LinearLayout llCoin;
+    // Метод вызываемый при нажатии на один из пунктов меню
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        // Получаем индекс монеты
+        int indexLLCoin = llCoinsList.indexOf(llCoin);
+
+        switch (item.getItemId()) {
+            case R.id.delete:
+                Data.removeCoin(indexLLCoin);
+                llCoin.setVisibility(View.GONE);
+                LLCoins.removeView(llCoin);
+                llCoinsList.remove(llCoin);
+
+                break;
+        }
+
+        return super.onContextItemSelected(item);
     }
 
     // Из макета создаём контейнер с инфой о монете
     private void createCoinLL(Coin coin) {
-        LinearLayout linearLayout =
+        LinearLayout llCoin =
                 (LinearLayout) LayoutInflater.from(this).
                         inflate(R.layout.coinll, null);
 
         // Отображаем названи
-        ((TextView) (linearLayout.getChildAt(0))).setText(coin.getName());
-        ((TextView) (linearLayout.getChildAt(1))).
+        ((TextView) (llCoin.getChildAt(0))).setText(coin.getName());
+        ((TextView) (llCoin.getChildAt(1))).
                 setText(String.valueOf(coin.getValue()));
-        ((TextView) (linearLayout.getChildAt(2))).
+        ((TextView) (llCoin.getChildAt(2))).
                 setText(String.valueOf(coin.getDiv()));
 
         // Объект с инф. о параметрах вставки компонента
@@ -82,7 +169,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         layoutParams.setMargins(10, 10, 10, 10);
 
-        LLCoins.addView(linearLayout, layoutParams);
+        // Привяжем обработчик на нажатие на контейнер с монетой
+        llCoin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                LinearLayout llCoin = (LinearLayout)view;
+
+                coinIndex = llCoinsList.indexOf(llCoin);
+
+                // Скрываем видимость поля для ввода, при нажатии на любую из монет
+                etNewCoin.setVisibility(View.GONE);
+
+                RequestOneCoinPrice requestOneCoinPrice =
+                        new RequestOneCoinPrice(coinIndex);
+                requestOneCoinPrice.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }
+        });
+
+        // Регистрируем контейнер с монетой, для контекстного меню
+        registerForContextMenu(llCoin);
+
+        llCoinsList.add(llCoin);
+        LLCoins.addView(llCoin, layoutParams);
     }
 
     // Создаём несколько контейнеров
@@ -102,52 +210,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    // Метод, вызываемый при добавлении монеты в коллекцию
     public void btAddCoinClick() {
         if (etNewCoin.getVisibility() == View.GONE) {
             etNewCoin.setVisibility(View.VISIBLE);
         } else {
-            String etNewCoinText = etNewCoin.getText().toString();
+            // Считываем название монеты с поля для ввода
+            String etNewCoinText = etNewCoin.getText().toString().toUpperCase(); // BTC
 
             if (etNewCoinText.isEmpty()) {
                 Toast.makeText(MainActivity.this,
-                        "Enter some coin name",
+                        getString(R.string.newCoinHint),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            Coin coin = new Coin(etNewCoinText);
-            if (Data.addCoin(coin)) {
-                createCoinLL(coin);
-            } else {
-                Toast.makeText(this, "Эта монета уже есть :)", Toast.LENGTH_SHORT).show();
-            }
+            etNewCoin.setText("");
+
+            RequestIsCorectNameCoin requestIsCorectNameCoin =
+                    new RequestIsCorectNameCoin(etNewCoinText);
+            requestIsCorectNameCoin.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
-    /*
-    // Отображаем инф. о монетах на экран
-    private void showCoins() {
-        for (int i = 0; i < coins.length; i++) {
-            tvNames[i].setText(coins[i].getName());
-            tvValues[i].setText(coins[i].getValue() + "$");
-            double div = coins[i].getDiv();
-            // Отображать только два знака после запятой
-            String divString = String.format("%.2f", div);
-            // 0.0224215363624371235161
-            // 0.02
-            if (div < 0) {
-                // Изменяем цвет текса текстового поля на красный
-                tvDivs[i].setTextColor(Color.parseColor("#ff0000"));
-                tvDivs[i].setText(divString + "%");
-            } else if (div == 0) {
-                // Изменяем цвет текса текстового поля на красный
-                tvDivs[i].setTextColor(Color.parseColor("#f1f1f1"));
-                tvDivs[i].setText(divString + "%");
-            } else {
-                // Изменяем цвет текса текстового поля на зеленый
-                tvDivs[i].setTextColor(Color.parseColor("#00ff00"));
-                tvDivs[i].setText("+" + divString + "%");
-            }
-        }
+
+    public void llCoinClick(View view){
+        LinearLayout llCoin = (LinearLayout)view;
+
+        int coinIndex = llCoinsList.indexOf(llCoin);
+
+        // String coinName = Data.getCoinsArrayList().get(coinIndex).getName();
     }
 
     // Метод для получения информации о текущем курсе криптовалют на сервисе https://coinmarketcap.com/
@@ -199,19 +290,85 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    // Асинхронный поток для получения информации о значениях криптовалют
-    class RequestGetCoinsCost extends AsyncTask<Void, Void, Void> {
-        // Выполняет работу в фоновом потоке
-        // НЕ ИМЕЕТ ДОСТУПА К GUI
+    // Отображаем инф. о монетах на экран
+    private void showCoins() {
+        for (int i = 0; i < Data.getCoinsArrayList().size(); i++) {
+            Coin coin = Data.getCoinsArrayList().get(i);
+            LinearLayout llCoin = llCoinsList.get(i);
+            double div = coin.getDiv();
+            String divString = String.format("%.5f", div);
+
+            ((TextView) (llCoin.getChildAt(0))).setText(coin.getName());
+            ((TextView) (llCoin.getChildAt(1))).
+                    setText(String.valueOf(coin.getValue()));
+
+            TextView tvDiv = ((TextView) (llCoin.getChildAt(2)));
+
+            // Если курс вырос
+            if (div > 0) {
+                tvDiv.setText("+" + divString + "%");
+                // Цвет зеленый
+                tvDiv.setTextColor(Color.parseColor("#32CD32"));
+            }
+            else if (div == 0) {
+                tvDiv.setText(0 + "%");
+                // Цвет черный
+                tvDiv.setTextColor(Color.parseColor("#000000"));
+            }
+            else{
+                tvDiv.setText(divString + "%");
+                // Цвет красный
+                tvDiv.setTextColor(Color.parseColor("#ff0000"));
+            }
+            }
+
+        }
+
+    // Асинхронный поток для  получения информации об одной криптовалюте
+    class RequestOneCoinPrice extends AsyncTask<Void, Void, Void> {
+        int index;
+
+        public RequestOneCoinPrice(int coinIndex) {
+            this.index = coinIndex;
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            double cost =
+                    coinmarketRequset(
+                            Data.getCoinsArrayList().
+                                    get(index).
+                                    getName());
+            // Изменяем значения текущего курса для монеты
+            // под индексом indexOneCoin
+            Data.getCoinsArrayList().get(index).setValue(cost);
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            // Отображаем информацию о всех монетах
+            showCoins();
+            String coinName =  Data.getCoinsArrayList().
+                    get(index).
+                    getName();
+            super.onPostExecute(aVoid);
+        }
+    }
+
+    // Асинхронный поток для получения информации о множестве монет
+    class RequestCoinsPrice extends AsyncTask<Void, Void,Void> {
         @Override
         protected Void doInBackground(Void... voids) {
             boolean flag = true;
 
             // Получаем информацию о валютах
             while (flag) {
-                for (int i = 0; i < coins.length; i++) {
-                    double cost = coinmarketRequset(coins[i].getName());
-                    coins[i].setValue(cost);
+                for (int i = 0; i < Data.getCoinsArrayList().size(); i++) {
+                    Coin coin = Data.getCoinsArrayList().get(i);
+                    double cost = coinmarketRequset(coin.getName());
+                    coin.setValue(cost);
                 }
 
                 // Это вызов метода onProgressUpdate
@@ -223,182 +380,59 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
-            }
 
+            }
             return null;
         }
 
-        // ИМЕЕТ ДОСТУП К ОСНОВНОМУ ПОТОКУ, ВЫЗЫВАЕТСЯ ИЗ doInBackground
         @Override
         protected void onProgressUpdate(Void... values) {
             // Выводим информацию о криптовалютах на экран
             showCoins();
-            super.onProgressUpdate(values);
         }
+
     }
 
-    // Асинхронный поток для  получения информации об одной криптовалюте
-    class RequestOneCoinPrice extends AsyncTask<Void, Void, Void> {
+    class RequestIsCorectNameCoin extends  AsyncTask<Void, Void, Void>{
+        public RequestIsCorectNameCoin(String coinName) {
+            this.coinName = coinName;
+        }
+
+        String coinName;
+        double coinPrice;
+
+        // Метод выполняющийся асинхроно, и никак не влияющий на основной поток приложения
         @Override
         protected Void doInBackground(Void... voids) {
-            // Получаем курс одном монеты
-            // Получаем по индексу indexOneCoin монету, получаем её имя
-            // и запрашиваем её курс
-            double cost = coinmarketRequset(coins[indexOneCoin].getName());
-            // Изменяем значения текущего курса для монеты
-            // под индексом indexOneCoin
-            coins[indexOneCoin].setValue(cost);
+            // Если монета существует, мы получим вещественное положительное число
+            // Если же монета не сущесвтует, мы получим -1
+            coinPrice =  coinmarketRequset(coinName);
 
             return null;
         }
 
+        // Метод вызываемый после выполнения doInBackground
         @Override
         protected void onPostExecute(Void aVoid) {
-            // Отображаем информацию о всех монетах
-            showCoins();
-            String coinName = coins[indexOneCoin].getName();
-            Toast.makeText(MainActivity.this,
-                    "Получили курс - " + coinName,
-                    Toast.LENGTH_SHORT).show();
-            super.onPostExecute(aVoid);
-        }
-    }
-
-    // Асинхронный поток для  получения информации об одной криптовалюте
-    class RequestOneCoinPriceName extends AsyncTask<Void, Void, Void> {
-        double cost = 0;
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            // Получаем курс одном монеты
-            // Если монета с именем coinName существует, то метод вернет её значение
-            // если монеты с таким именем нет, метод вернет -1
-            cost = coinmarketRequset(coinName);
-
-            return null;
-        }
-
-        // Выполняется после doInBackground
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            // Если cost < 0, то валюты с именем coinName нет
-            if (cost < 0) {
-                Toast.makeText(MainActivity.this, "Ошибка", Toast.LENGTH_SHORT).show();
-                // Иначе, если cost >=0 то валюта с таким именем есть
-            } else {
-                Toast.makeText(MainActivity.this, "Ошибки не было", Toast.LENGTH_SHORT).show();
-                // Добавить логику добавления монеты в список
+            if (coinPrice != -1){
+                Coin coin = new Coin(coinName);
+                if (Data.addCoin(coin)) {
+                    createCoinLL(coin);
+                    // Скрываем поле для ввода новой монеты
+                    etNewCoin.setVisibility(View.GONE);
+                } else {
+                    Toast.makeText(MainActivity.this,
+                            getString(R.string.coinExist),
+                            Toast.LENGTH_SHORT).show();
+                }
             }
-
-            // После того, как мы получили ответ по запрошенному имени монеты
-            // скрыть поле для ввода имени новой монеты
-            etNewCoin.setVisibility(View.GONE);
+            else{
+                Toast.makeText(MainActivity.this,
+                        getString(R.string.c404),
+                        Toast.LENGTH_SHORT).show();
+            }
 
             super.onPostExecute(aVoid);
         }
-    }
-
-    int indexOneCoin = 0;
-    String coinName;
-
-    View.OnClickListener onCoinClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-            // view - объект на котором было совершенн нажатие
-            int index = -1;
-
-            // llCoins в котором содержится информация о всех контейнерах
-            // LinearLayout с монетами
-            for (int i = 0; i < llCoins.length; i++) {
-                // Если текущий контейнер LinearLayout по индексу i,
-                // соотв. объекту на котором было соверщенно нажатие
-                // то присвоить его индекс переменной index
-                // и  завершить выполнение цикла
-                if (llCoins[i].equals(view)) {
-                    index = i;
-                    break;
-                }
-            }
-
-            // Если не нашли вхождение объекта в массив
-            // Не нашли контейнера на который нажимали в массиве
-            // Делаем завершение выполнение метода
-            if (index == -1) return;
-
-            // Переменной класса indexOneCoin присваиваем значение переменной index
-            indexOneCoin = index;
-
-            // Ассинхронный поток, для получения информации о одной монете
-            RequestOneCoinPrice requestOneCoinPrice =
-                    new RequestOneCoinPrice();
-            // Помещается в очередь на выполнение
-            // По-умолчанию, все асинхронные потоки,
-            // выполняются по принципу
-            // Создается поток 1, срок жизни которого равен 10 секунд, и запускается поток на выполение
-            // Через 3 сек. создаем асинхр. поток 2, и запускаем его.
-            // Поток 2, не будет выполняться вовсе., если при его вызове использовался
-            // след. синтаксис: asyncTaskName.execute();
-            // Если Вам необходимо, чтобы задачи выполнялись "парралельно",
-            // то при вызове потока на исполнения необходимо применять
-            // синтаксис:
-            // asyncTaskName.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-            requestOneCoinPrice.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-
-            // 1 - изначально
-            // x - потоков может быть
-            // > x && RAM.ISFree() --> x*y
-            // 127 потоков
-        }
-    };
-
-    // Метод обработичка на нажатие на кнопку "добаваить монету"
-    View.OnClickListener onButtonAddCoinClickListener =
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    // etNewCoin.getVisibility() - получаем статус видимости компонента
-                    // View.GONE - компонент не виден, и не занимает место в контейнере
-                    // View.VISIBLE - компонент виден, и занимает место в контейнере
-                    if (etNewCoin.getVisibility() == View.GONE) {
-                        etNewCoin.setVisibility(View.VISIBLE);
-                    } else {
-                        // Считывем текст с поля для ввода
-                        String etNewCoinText = etNewCoin.getText().toString();
-
-                        // Если строка etNewCoinText пуста, то выводим сообщение
-                        // что строка пуста, и делаем возврат из метода
-                        if (etNewCoinText.isEmpty()) {
-                            Toast.makeText(MainActivity.this,
-                                    "Enter some coin name",
-                                    Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        // Переменной класса coinName присваиваем значения текста
-                        // с текстового поля, возведенное в верхний регистр
-                        // btc - error
-                        // BTC - JSON
-                        // BTC, btc, Btc
-                        // toUpperCase() - метод для возведения строки к верхнему регистру
-                        coinName = etNewCoinText.toUpperCase();
-
-                        // Запрашиваем курс одной монеты, по её имени
-                        // если мы курс получаем, то добавляем монету
-                        // иначе, если мы получаем ощибку то выводим на экран,что всё очень плохо
-                        RequestOneCoinPriceName requestOneCoinPriceName =
-                                new RequestOneCoinPriceName();
-                        requestOneCoinPriceName.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-
-                        // etNewCoin.setVisibility(View.GONE);
-                    }
-                }
-            };
-            */
-
-    private void testMethod() {
-        Customer customer = new Customer();
-        customer.setName("Alex").
-                setLastName("Black").
-                setEmail("customer@gmail.com");
     }
 }

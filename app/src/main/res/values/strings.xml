@@ -1,3 +1,12 @@
 <resources>
-    <string name="app_name">МЕГА ТРЕЙДЕР</string>
+    <string name="app_name">Mega Trader</string>
+    <string name="addCoin">Add coin</string>
+    <string name="newCoinHint">Enter some coin name...</string>
+    <string name="delete">Delete</string>
+    <string name="successAdd">Coin has been added</string>
+    <string name="c404">Coin not found</string>
+    <string name="coinExist">This coin is already added</string>
+    <string name="banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+
+
 </resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">МЕГА ТРЕЙДЕР</string>
+    <string name="addCoin">Добавить монету</string>
+    <string name="newCoinHint">Введите название монеты...</string>
+    <string name="delete">Удалить</string>
+    <string name="successAdd">Монета добавлена</string>
+    <string name="c404">Монета не найдена</string>
+    <string name="coinExist">Монета уже добавлена</string>
+    <string name="banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+</resources>
